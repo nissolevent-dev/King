@@ -230,6 +230,20 @@
   .score-table tr.total-row td.pos{color:var(--gold-light);}
   .score-table tr.total-row td.neg{color:var(--crimson-light);}
 
+  /* ---- Archive ---- */
+  .archive-card{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px;}
+  .archive-date{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;}
+  .archive-scores{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+  .archive-score{font-size:13px;color:var(--ivory-dim);}
+  .archive-score b{font-family:'JetBrains Mono',monospace;margin-left:4px;}
+  .archive-score b.neg{color:var(--crimson-light);}
+  .archive-score b.pos{color:var(--gold-light);}
+  .archive-actions{display:flex;gap:8px;}
+  .archive-actions button{font-size:12px;padding:7px 12px;border-radius:7px;cursor:pointer;font-family:'Work Sans';}
+  .archive-detail-btn{background:transparent;border:1px solid var(--gold);color:var(--gold-light);}
+  .archive-del-btn{background:transparent;border:1px solid var(--line);color:var(--muted);}
+  .archive-del-btn:hover{color:var(--crimson-light);border-color:var(--crimson-light);}
+
   @media (max-width:560px){
     .players-row{grid-template-columns:repeat(2,1fr);}
     .stat-cards{grid-template-columns:repeat(2,1fr);}
@@ -259,6 +273,7 @@
   <div id="sessionBarHost"></div>
 
   <div id="gameHost"></div>
+  <div id="archiveHost"></div>
   <div id="modalHost"></div>
 
 </div>
@@ -292,20 +307,23 @@
   }
 
   // ---- State ----
-  function defaultState(){ return { roster: [], session: null }; }
+  function defaultState(){ return { roster: [], session: null, archive: [] }; }
   function loadState(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         const parsed = JSON.parse(raw);
-        if(parsed.roster) return parsed;
+        if(parsed.roster){
+          if(!parsed.archive) parsed.archive = [];
+          return parsed;
+        }
       }
       // migrate from v1 (flat player list, no roster) if present
       const old = localStorage.getItem(OLD_STORAGE_KEY);
       if(old){
         const p = JSON.parse(old);
         if(p.players){
-          return { roster: p.players.map(name=>({id:uid(), name})), session: null };
+          return { roster: p.players.map(name=>({id:uid(), name})), session: null, archive: [] };
         }
       }
     }catch(e){}
@@ -482,13 +500,25 @@
     const seatNames = s.seatingIdx.map(i=>s.players[i]).join(" → ");
     host.innerHTML = `<div class="session-bar">
       <span>Oturma sırası: <b>${escapeHtml(seatNames)}</b> — Karo 2: <b>${escapeHtml(s.players[s.karo2Idx])}</b></span>
-      <button id="endSessionBtn">Yeni Oyun</button>
+      <button id="endSessionBtn">Oyunu Bitir</button>
     </div>`;
     document.getElementById("endSessionBtn").addEventListener("click", ()=>{
-      const msg = s.hands.length>0
-        ? "Mevcut oyun (kaydedilen eller) silinip yeni oyun kurulumuna dönülecek. Emin misin?"
-        : "Yeni oyun kurulumuna dön?";
-      if(confirm(msg)){
+      if(s.hands.length===0){
+        if(confirm("Henüz el eklenmedi. Kurulumu iptal edip baştan mı başlayalım?")){
+          state.session = null;
+          saveState(); renderAll();
+        }
+        return;
+      }
+      if(confirm("Oyun bitirilip arşive kaydedilsin mi? Bu oyun için el eklemeye devam edemezsin.")){
+        state.archive.unshift({
+          id: Date.now(),
+          finishedAt: new Date().toISOString(),
+          players: s.players.slice(),
+          seatingIdx: s.seatingIdx.slice(),
+          karo2Idx: s.karo2Idx,
+          hands: s.hands
+        });
         state.session = null;
         saveState(); renderAll();
       }
@@ -505,13 +535,16 @@
     for(let p=0;p<4;p++){ scores[p] = (hand.counts[p]||0) * info.per; }
     return scores;
   }
+  function totalsForHands(hands){
+    const t=[0,0,0,0];
+    hands.forEach(h=>{ const s=handScores(h); for(let p=0;p<4;p++) t[p]+=s[p]; });
+    return t;
+  }
   function validHandCount(){
     return state.session.hands.filter(h=>!h.cancelled).length;
   }
   function totals(){
-    const t=[0,0,0,0];
-    state.session.hands.forEach(h=>{ const s=handScores(h); for(let p=0;p<4;p++) t[p]+=s[p]; });
-    return t;
+    return totalsForHands(state.session.hands);
   }
   function plusMinusTotals(){
     const pos=[0,0,0,0], neg=[0,0,0,0];
@@ -533,7 +566,7 @@
 
   function renderGame(){
     const host = document.getElementById("gameHost");
-    if(!state.session){ host.innerHTML=""; scoreTableOpen=false; renderModal(); return; }
+    if(!state.session){ host.innerHTML=""; if(modalSource && modalSource.type==="live") modalSource=null; renderModal(); return; }
     host.innerHTML = `
       <div class="players-row" id="playersRow"></div>
       <button class="table-btn" id="scoreTableBtn">📊 Puan Tablosu</button>
@@ -604,16 +637,26 @@
       : `El ${vhc}/${TOTAL_HANDS} — sırada: <b style="color:var(--gold-light)">${escapeHtml(s.players[nextChooser])}</b>`);
   }
 
-  function openScoreTable(){ scoreTableOpen = true; renderModal(); }
-  function closeScoreTable(){ scoreTableOpen = false; renderModal(); }
-  let scoreTableOpen = false;
+  function openScoreTable(){ modalSource = {type:'live'}; renderModal(); }
+  function openArchiveScoreTable(archiveId){ modalSource = {type:'archive', id:archiveId}; renderModal(); }
+  function closeScoreTable(){ modalSource = null; renderModal(); }
+  let modalSource = null;
   function renderModal(){
     const host = document.getElementById("modalHost");
-    if(!scoreTableOpen || !state.session){ host.innerHTML=""; return; }
-    const s = state.session;
-    const t = totals();
+    if(!modalSource){ host.innerHTML=""; return; }
+    let players, hands, title;
+    if(modalSource.type==="live"){
+      if(!state.session){ host.innerHTML=""; modalSource=null; return; }
+      players = state.session.players; hands = state.session.hands; title = "Puan Tablosu";
+    } else {
+      const entry = state.archive.find(a=>a.id===modalSource.id);
+      if(!entry){ host.innerHTML=""; modalSource=null; return; }
+      players = entry.players; hands = entry.hands;
+      title = "Puan Tablosu — " + formatArchiveDate(entry.finishedAt);
+    }
+    const t = totalsForHands(hands);
     let rowsHtml = "";
-    s.hands.forEach((h,idx)=>{
+    hands.forEach((h,idx)=>{
       const info = typeInfo(h.type);
       const scores = handScores(h);
       rowsHtml += `<tr${h.cancelled?' style="opacity:0.55;"':''}><td>${idx+1}</td><td class="htype"><span class="hicon">${info.icon}</span> ${info.name}${h.cancelled?' <span class="cancel-tag">İPTAL</span>':''}</td>`;
@@ -630,11 +673,11 @@
     const totalRow = `<tr class="total-row"><td colspan="2">Toplam</td>${t.map(v=>`<td class="${v<0?'neg':v>0?'pos':''}">${v}</td>`).join("")}</tr>`;
     host.innerHTML = `<div class="modal-overlay" id="modalOverlay">
       <div class="modal-box">
-        <div class="modal-header"><h3>Puan Tablosu</h3><button id="closeModalBtn">✕</button></div>
+        <div class="modal-header"><h3>${escapeHtml(title)}</h3><button id="closeModalBtn">✕</button></div>
         <div class="modal-body">
-          ${s.hands.length===0 ? '<div class="empty-note">Henüz el eklenmedi.</div>' : `
+          ${hands.length===0 ? '<div class="empty-note">Henüz el eklenmedi.</div>' : `
           <table class="score-table">
-            <thead><tr><th>El</th><th>İhale</th>${s.players.map(n=>`<th>${escapeHtml(n)}</th>`).join("")}</tr></thead>
+            <thead><tr><th>El</th><th>İhale</th>${players.map(n=>`<th>${escapeHtml(n)}</th>`).join("")}</tr></thead>
             <tbody>${rowsHtml}${totalRow}</tbody>
           </table>`}
         </div>
@@ -801,12 +844,53 @@
     });
   }
 
+  function formatArchiveDate(iso){
+    try{
+      const d = new Date(iso);
+      return d.toLocaleDateString('tr-TR', {day:'2-digit', month:'2-digit', year:'numeric'}) + ' ' +
+             d.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+    }catch(e){ return iso; }
+  }
+
+  function renderArchive(){
+    const host = document.getElementById("archiveHost");
+    if(state.archive.length===0){ host.innerHTML=""; return; }
+    let html = `<div class="section-title"><span>Geçmiş Oyunlar</span><div class="rule"></div></div>`;
+    state.archive.forEach(entry=>{
+      const t = totalsForHands(entry.hands);
+      const order = entry.players.map((n,i)=>({n,v:t[i]})).sort((a,b)=>b.v-a.v);
+      html += `<div class="archive-card">
+        <div class="archive-date">${formatArchiveDate(entry.finishedAt)} — ${entry.hands.filter(h=>!h.cancelled).length} el</div>
+        <div class="archive-scores">
+          ${order.map(o=>`<span class="archive-score">${escapeHtml(o.n)}<b class="${o.v<0?'neg':o.v>0?'pos':''}">${o.v}</b></span>`).join("")}
+        </div>
+        <div class="archive-actions">
+          <button class="archive-detail-btn" data-archive-detail="${entry.id}">📊 Detay</button>
+          <button class="archive-del-btn" data-archive-del="${entry.id}">Sil</button>
+        </div>
+      </div>`;
+    });
+    host.innerHTML = html;
+    host.querySelectorAll('[data-archive-detail]').forEach(b=>{
+      b.addEventListener("click", ()=> openArchiveScoreTable(+b.dataset.archiveDetail));
+    });
+    host.querySelectorAll('[data-archive-del]').forEach(b=>{
+      b.addEventListener("click", ()=>{
+        if(confirm("Bu arşiv kaydı silinsin mi? Bu işlem geri alınamaz.")){
+          state.archive = state.archive.filter(a=>a.id!==+b.dataset.archiveDel);
+          saveState(); renderAll();
+        }
+      });
+    });
+  }
+
   // ==================================================
   function renderAll(){
     renderRoster();
     renderSetup();
     renderSessionBar();
     renderGame();
+    renderArchive();
   }
 
   renderAll();
