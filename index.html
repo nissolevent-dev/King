@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Skor Defteri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2818;
+    --felt:#153623;
+    --felt-light:#1B4332;
+    --ivory:#F7F3E9;
+    --ivory-dim:#EAE4D3;
+    --ink:#1A1A2E;
+    --gold:#C9A227;
+    --gold-light:#E4C767;
+    --crimson:#A8322D;
+    --crimson-light:#D4645C;
+    --muted:#8FA396;
+    --line: rgba(247,243,233,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at top, var(--felt-light) 0%, var(--bg) 65%);
+    color:var(--ivory);
+    font-family:'Work Sans', sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:24px 16px 0;}
+
+  header{text-align:center;padding:18px 0 10px;}
+  .kingmark{font-family:'Fraunces',serif;font-optical-sizing:auto;font-weight:700;font-size:44px;letter-spacing:1px;color:var(--gold-light);margin:0;}
+  .suitrow{letter-spacing:10px;font-size:15px;color:var(--muted);margin:4px 0 2px;}
+  .subtitle{font-size:13px;color:var(--muted);margin:0 0 8px;font-weight:500;}
+
+  .section-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;color:var(--ivory);margin:26px 0 12px;display:flex;align-items:center;gap:8px;}
+  .section-title .rule{flex:1;height:1px;background:var(--line);}
+  .section-title .tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);font-weight:400;}
+
+  /* ---- Roster ---- */
+  .roster-card{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  .roster-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .roster-chip{
+    display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);
+    border-radius:20px;padding:6px 6px 6px 12px;font-size:13px;
+  }
+  .roster-chip button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;
+    width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  .roster-chip button:hover{color:var(--crimson-light);background:rgba(168,50,45,0.15);}
+  .roster-empty{color:var(--muted);font-size:12px;margin-bottom:10px;}
+  .roster-add{display:flex;gap:8px;}
+  .roster-add input{
+    flex:1;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--ivory);
+    padding:9px 12px;font-family:'Work Sans';font-size:13px;
+  }
+  .roster-add input:focus{outline:none;border-color:var(--gold);}
+  .roster-add button{background:var(--gold);color:var(--ink);border:none;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer;}
+
+  /* ---- Setup wizard ---- */
+  .setup-card{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .step-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:14px 0 8px;}
+  .step-label:first-child{margin-top:0;}
+  .choice-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .choice-btn{
+    background:var(--bg);border:1px solid var(--line);color:var(--ivory-dim);border-radius:8px;
+    padding:9px 12px;font-size:13px;cursor:pointer;font-family:'Work Sans';display:flex;align-items:center;gap:6px;
+  }
+  .choice-btn .icon{font-size:14px;}
+  .choice-btn small{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;}
+  .choice-btn.selected{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:600;}
+  .choice-btn:disabled{opacity:0.3;cursor:not-allowed;}
+  .seat-btn{position:relative;}
+  .seat-badge{
+    position:absolute;top:-7px;right:-7px;background:var(--gold);color:var(--ink);
+    width:18px;height:18px;border-radius:50%;font-size:10px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;
+  }
+  .setup-hint{font-size:12px;color:var(--muted);margin-top:6px;}
+  .panel-actions{display:flex;gap:8px;margin-top:16px;}
+  .btn-primary{flex:1;background:var(--gold);color:var(--ink);border:none;border-radius:8px;padding:11px;font-weight:700;cursor:pointer;font-family:'Work Sans';}
+  .btn-primary:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:11px 16px;cursor:pointer;font-family:'Work Sans';}
+
+  /* ---- Active session bar ---- */
+  .session-bar{display:flex;justify-content:space-between;align-items:center;background:var(--felt);
+    border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-top:14px;font-size:12px;color:var(--muted);}
+  .session-bar b{color:var(--gold-light);font-family:'JetBrains Mono',monospace;}
+  .session-bar button{background:none;border:1px solid var(--line);color:var(--crimson-light);border-radius:6px;
+    padding:6px 10px;cursor:pointer;font-size:11px;}
+
+  /* ---- Players / scoreboard ---- */
+  .players-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0;}
+  .player-card{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:12px 8px;text-align:center;position:relative;}
+  .player-card.leader{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;}
+  .player-card .pname{font-size:13px;font-weight:600;color:var(--ivory);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .player-total{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;margin-top:6px;color:var(--ivory);}
+  .player-total.neg{color:var(--crimson-light);}
+  .player-total.pos{color:var(--gold-light);}
+  .player-delta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);min-height:14px;}
+  .next-chooser{text-align:center;font-size:13px;color:var(--gold-light);margin-top:4px;}
+  .next-chooser b{font-family:'Fraunces',serif;}
+
+  .quota-title{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin:22px 0 8px;}
+  .quota-strip{display:flex;flex-wrap:wrap;gap:6px;}
+  .quota-pill{display:flex;align-items:center;gap:5px;background:var(--felt);border:1px solid var(--line);
+    border-radius:20px;padding:5px 10px;font-size:12px;color:var(--ivory-dim);}
+  .quota-pill .icon{font-size:13px;}
+  .quota-pill.done{border-color:var(--gold);color:var(--gold-light);opacity:0.85;}
+  .quota-pill b{font-family:'JetBrains Mono',monospace;font-weight:700;}
+
+  .add-btn{width:100%;margin-top:20px;padding:14px;border:none;border-radius:10px;
+    background:linear-gradient(180deg,var(--gold-light),var(--gold));
+    color:var(--ink);font-family:'Fraunces',serif;font-weight:700;font-size:16px;letter-spacing:.5px;cursor:pointer;}
+  .add-btn:hover{filter:brightness(1.05);}
+  .hand-progress{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;font-family:'JetBrains Mono',monospace;}
+
+  .panel{background:var(--felt);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:16px;animation:fadein .18s ease-out;}
+  @keyframes fadein{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+  .panel h3{font-family:'Fraunces',serif;font-size:16px;margin:0 0 4px;color:var(--gold-light);font-weight:600;}
+  .panel .chooser-note{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .panel .chooser-note b{color:var(--ivory-dim);}
+
+  .dist-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}
+  .dist-cell{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;}
+  .dist-cell label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dist-cell input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--line);
+    color:var(--gold-light);font-family:'JetBrains Mono',monospace;font-size:18px;text-align:center;padding:4px 0;}
+  .dist-cell input:focus{outline:none;border-bottom:1px solid var(--gold);}
+  .dist-sum{font-size:12px;text-align:right;margin-top:6px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+  .dist-sum.ok{color:var(--gold-light);}
+  .dist-sum.bad{color:var(--crimson-light);}
+
+  .rifki-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}
+  .rifki-btn{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:14px 6px;text-align:center;
+    color:var(--ivory-dim);cursor:pointer;font-size:13px;}
+  .rifki-btn.selected{background:var(--crimson);border-color:var(--crimson-light);color:var(--ivory);font-weight:600;}
+
+  .empty-note{color:var(--muted);font-size:13px;text-align:center;padding:24px 0;}
+  .hand-row{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+  .hand-row.rifki-row{border-color:rgba(201,162,39,0.5);box-shadow:0 0 12px rgba(201,162,39,0.08) inset;}
+  .hand-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .hand-meta{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
+  .hand-num{font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:12px;}
+  .hand-type{font-weight:600;color:var(--ivory);display:flex;align-items:center;gap:5px;}
+  .hand-chooser{color:var(--muted);font-size:12px;}
+  .hand-actions button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;}
+  .hand-actions button:hover{color:var(--crimson-light);}
+  .hand-breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+  .bd-cell{font-size:12px;text-align:center;background:var(--bg);border-radius:6px;padding:5px 2px;}
+  .bd-cell .name{color:var(--muted);font-size:10px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bd-cell .val{font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .bd-cell .score{font-family:'JetBrains Mono',monospace;font-size:11px;display:block;}
+  .score.neg{color:var(--crimson-light);}
+  .score.pos{color:var(--gold-light);}
+  .score.zero{color:var(--muted);}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .stat-card{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:12px;}
+  .stat-card h4{margin:0 0 8px;font-size:13px;font-family:'Fraunces',serif;color:var(--gold-light);font-weight:600;}
+  .stat-line{display:flex;justify-content:space-between;font-size:11px;color:var(--ivory-dim);margin-bottom:4px;}
+  .stat-line span:last-child{font-family:'JetBrains Mono',monospace;color:var(--muted);}
+
+  .chart-wrap{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:12px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  footer{text-align:center;color:var(--muted);font-size:11px;margin-top:36px;padding:0 16px;}
+
+  @media (max-width:560px){
+    .players-row{grid-template-columns:repeat(2,1fr);}
+    .stat-cards{grid-template-columns:repeat(2,1fr);}
+    .kingmark{font-size:34px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="suitrow">♠ ♥ ♦ ♣</div>
+    <h1 class="kingmark">KING</h1>
+    <p class="subtitle">Skor Defteri</p>
+  </header>
+
+  <div class="section-title"><span>Oyuncular</span><div class="rule"></div><span class="tag">kalıcı liste</span></div>
+  <div class="roster-card">
+    <div class="roster-chips" id="rosterChips"></div>
+    <div class="roster-add">
+      <input type="text" id="newPlayerInput" placeholder="Yeni oyuncu adı" maxlength="20"/>
+      <button id="addPlayerBtn">Ekle</button>
+    </div>
+  </div>
+
+  <div id="setupHost"></div>
+  <div id="sessionBarHost"></div>
+
+  <div id="gameHost"></div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = "king-skor-defteri-v2";
+  const OLD_STORAGE_KEY = "king-skor-defteri-v1";
+  const PLAYER_COLORS = ["#E4C767","#D4645C","#7FB8A0","#8FA3D8"];
+
+  const CEZA_TYPES = [
+    {id:"kupa",   name:"Kupasız",    icon:"♥", units:13, per:-30,  unitLabel:"kupa"},
+    {id:"kiz",    name:"Kızsız",     icon:"♛", units:4,  per:-100, unitLabel:"kız"},
+    {id:"erkek",  name:"Erkeksiz",   icon:"♚", units:8,  per:-60,  unitLabel:"erkek (K/V)"},
+    {id:"el",     name:"Elsiz",      icon:"✋", units:13, per:-50,  unitLabel:"el"},
+    {id:"sonIki", name:"Son İkisiz", icon:"⏳", units:2,  per:-180, unitLabel:"el"},
+    {id:"rifki",  name:"Rıfkısız",   icon:"👑", units:1,  per:-320, unitLabel:"kupa papazı"},
+  ];
+  const KOZ_TYPE = {id:"koz", name:"Koz", icon:"♠", units:13, per:50, unitLabel:"el"};
+  const ALL_TYPES = [...CEZA_TYPES, KOZ_TYPE];
+  const TOTAL_HANDS = 20;
+  const CEZA_QUOTA_PER_PLAYER = 3;
+  const KOZ_QUOTA_PER_PLAYER = 2;
+
+  function typeInfo(id){ return ALL_TYPES.find(t=>t.id===id); }
+  function uid(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  // ---- State ----
+  function defaultState(){ return { roster: [], session: null }; }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed.roster) return parsed;
+      }
+      // migrate from v1 (flat player list, no roster) if present
+      const old = localStorage.getItem(OLD_STORAGE_KEY);
+      if(old){
+        const p = JSON.parse(old);
+        if(p.players){
+          return { roster: p.players.map(name=>({id:uid(), name})), session: null };
+        }
+      }
+    }catch(e){}
+    return defaultState();
+  }
+  let state = loadState();
+  function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  function rosterName(id){
+    const r = state.roster.find(p=>p.id===id);
+    return r ? r.name : "?";
+  }
+
+  // ==================================================
+  // ROSTER
+  // ==================================================
+  function renderRoster(){
+    const host = document.getElementById("rosterChips");
+    if(state.roster.length===0){
+      host.innerHTML = `<div class="roster-empty">Henüz oyuncu eklenmedi. Aşağıdan ekleyerek başla.</div>`;
+    } else {
+      host.innerHTML = state.roster.map(p=>`
+        <div class="roster-chip">${escapeHtml(p.name)}<button data-del-player="${p.id}" title="Sil">✕</button></div>
+      `).join("");
+      host.querySelectorAll('[data-del-player]').forEach(b=>{
+        b.addEventListener("click", ()=>{
+          const id = b.dataset.delPlayer;
+          if(confirm(`${escapeHtml(rosterName(id))} listeden silinsin mi?`)){
+            state.roster = state.roster.filter(p=>p.id!==id);
+            if(setupState) setupState.selected = setupState.selected.filter(x=>x!==id);
+            saveState(); renderAll();
+          }
+        });
+      });
+    }
+  }
+
+  document.getElementById("addPlayerBtn").addEventListener("click", addPlayerFromInput);
+  document.getElementById("newPlayerInput").addEventListener("keydown", e=>{ if(e.key==="Enter") addPlayerFromInput(); });
+  function addPlayerFromInput(){
+    const inp = document.getElementById("newPlayerInput");
+    const name = inp.value.trim();
+    if(!name) return;
+    state.roster.push({id:uid(), name});
+    inp.value = "";
+    saveState(); renderAll();
+    document.getElementById("newPlayerInput").focus();
+  }
+
+  // ==================================================
+  // SETUP WIZARD ("Bugün kim oynuyor")
+  // ==================================================
+  let setupState = null; // {selected:[ids up to 4], karo2:null, seating:[ids in order]}
+
+  function ensureSetupState(){
+    if(!setupState) setupState = {selected:[], karo2:null, seating:[]};
+  }
+
+  function renderSetup(){
+    const host = document.getElementById("setupHost");
+    if(state.session){ host.innerHTML=""; return; }
+    ensureSetupState();
+
+    let html = `<div class="section-title"><span>Bugün Kim Oynuyor?</span><div class="rule"></div></div>`;
+    html += `<div class="setup-card">`;
+
+    // Step 1: pick 4 players
+    html += `<div class="step-label">1. Masadaki 4 oyuncuyu seç (${setupState.selected.length}/4)</div><div class="choice-grid">`;
+    if(state.roster.length===0){
+      html += `<div class="setup-hint">Önce yukarıdan oyuncu ekle.</div>`;
+    }
+    state.roster.forEach(p=>{
+      const sel = setupState.selected.includes(p.id);
+      const disabled = !sel && setupState.selected.length>=4;
+      html += `<button class="choice-btn ${sel?'selected':''}" data-step="select" data-val="${p.id}" ${disabled?'disabled':''}>${escapeHtml(p.name)}</button>`;
+    });
+    html += `</div>`;
+
+    // Step 2: karo 2
+    if(setupState.selected.length===4){
+      html += `<div class="step-label">2. Karo 2 kimde?</div><div class="choice-grid">`;
+      setupState.selected.forEach(id=>{
+        const sel = setupState.karo2===id;
+        html += `<button class="choice-btn ${sel?'selected':''}" data-step="karo2" data-val="${id}">${escapeHtml(rosterName(id))}</button>`;
+      });
+      html += `</div>`;
+    }
+
+    // Step 3: seating order
+    if(setupState.selected.length===4 && setupState.karo2){
+      html += `<div class="step-label">3. Oturma sırası (sırayla dokun)</div><div class="choice-grid">`;
+      setupState.selected.forEach(id=>{
+        const pos = setupState.seating.indexOf(id);
+        html += `<button class="choice-btn seat-btn" data-step="seat" data-val="${id}">
+          ${escapeHtml(rosterName(id))}${pos>=0?`<span class="seat-badge">${pos+1}</span>`:''}
+        </button>`;
+      });
+      html += `</div>`;
+      if(setupState.seating.length>0){
+        html += `<div class="setup-hint"><button class="btn-secondary" id="resetSeating" style="padding:4px 10px;font-size:11px;margin-top:6px;">Sırayı sıfırla</button></div>`;
+      }
+    }
+
+    const ready = setupState.selected.length===4 && setupState.karo2 && setupState.seating.length===4;
+    html += `<div class="panel-actions">
+      <button class="btn-primary" id="startSessionBtn" ${ready?'':'disabled'}>Oyunu Başlat</button>
+    </div>`;
+    html += `</div>`;
+
+    host.innerHTML = html;
+
+    host.querySelectorAll('[data-step="select"]').forEach(b=>b.addEventListener("click",()=>{
+      const id = b.dataset.val;
+      if(setupState.selected.includes(id)){
+        setupState.selected = setupState.selected.filter(x=>x!==id);
+        if(setupState.karo2===id) setupState.karo2=null;
+        setupState.seating = setupState.seating.filter(x=>x!==id);
+      } else if(setupState.selected.length<4){
+        setupState.selected.push(id);
+      }
+      renderSetup();
+    }));
+    host.querySelectorAll('[data-step="karo2"]').forEach(b=>b.addEventListener("click",()=>{
+      setupState.karo2 = b.dataset.val;
+      setupState.seating = [];
+      renderSetup();
+    }));
+    host.querySelectorAll('[data-step="seat"]').forEach(b=>b.addEventListener("click",()=>{
+      const id = b.dataset.val;
+      if(!setupState.seating.includes(id)) setupState.seating.push(id);
+      renderSetup();
+    }));
+    const resetSeatBtn = document.getElementById("resetSeating");
+    if(resetSeatBtn) resetSeatBtn.addEventListener("click", ()=>{ setupState.seating=[]; renderSetup(); });
+    const startBtn = document.getElementById("startSessionBtn");
+    if(startBtn) startBtn.addEventListener("click", startSession);
+  }
+
+  function startSession(){
+    const {selected, karo2, seating} = setupState;
+    if(selected.length!==4 || !karo2 || seating.length!==4) return;
+    const players = selected.map(id=>rosterName(id));           // index 0..3
+    const seatingIdx = seating.map(id=>selected.indexOf(id));    // seat order as player-indices
+    const karo2Idx = selected.indexOf(karo2);
+    const startPos = seatingIdx.indexOf(karo2Idx);
+    // turnOrder: player-index sequence starting from karo2 holder, following seating order
+    const turnOrder = [];
+    for(let i=0;i<4;i++) turnOrder.push(seatingIdx[(startPos+i)%4]);
+
+    state.session = {
+      players,
+      seatingIdx,
+      karo2Idx,
+      turnOrder,
+      hands: []
+    };
+    setupState = null;
+    saveState();
+    renderAll();
+  }
+
+  function chooserForHandIndex(n){
+    if(!state.session) return null;
+    return state.session.turnOrder[n % 4];
+  }
+
+  // ==================================================
+  // SESSION BAR
+  // ==================================================
+  function renderSessionBar(){
+    const host = document.getElementById("sessionBarHost");
+    if(!state.session){ host.innerHTML=""; return; }
+    const s = state.session;
+    const seatNames = s.seatingIdx.map(i=>s.players[i]).join(" → ");
+    host.innerHTML = `<div class="session-bar">
+      <span>Oturma sırası: <b>${escapeHtml(seatNames)}</b> — Karo 2: <b>${escapeHtml(s.players[s.karo2Idx])}</b></span>
+      <button id="endSessionBtn">Yeni Oyun</button>
+    </div>`;
+    document.getElementById("endSessionBtn").addEventListener("click", ()=>{
+      const msg = s.hands.length>0
+        ? "Mevcut oyun (kaydedilen eller) silinip yeni oyun kurulumuna dönülecek. Emin misin?"
+        : "Yeni oyun kurulumuna dön?";
+      if(confirm(msg)){
+        state.session = null;
+        saveState(); renderAll();
+      }
+    });
+  }
+
+  // ==================================================
+  // GAME (scoreboard, add hand, history, stats)
+  // ==================================================
+  function handScores(hand){
+    const info = typeInfo(hand.type);
+    const scores = [0,0,0,0];
+    for(let p=0;p<4;p++){ scores[p] = (hand.counts[p]||0) * info.per; }
+    return scores;
+  }
+  function totals(){
+    const t=[0,0,0,0];
+    state.session.hands.forEach(h=>{ const s=handScores(h); for(let p=0;p<4;p++) t[p]+=s[p]; });
+    return t;
+  }
+  function cumulativeSeries(){
+    const series=[[0],[0],[0],[0]], run=[0,0,0,0];
+    state.session.hands.forEach(h=>{ const s=handScores(h); for(let p=0;p<4;p++){ run[p]+=s[p]; series[p].push(run[p]); } });
+    return series;
+  }
+  function quotas(){
+    const typePlayed={}; ALL_TYPES.forEach(t=>typePlayed[t.id]=0);
+    const cezaByPlayer=[0,0,0,0], kozByPlayer=[0,0,0,0];
+    state.session.hands.forEach(h=>{
+      typePlayed[h.type]++;
+      if(h.type==="koz") kozByPlayer[h.chooser]++; else cezaByPlayer[h.chooser]++;
+    });
+    return {typePlayed, cezaByPlayer, kozByPlayer};
+  }
+
+  function renderGame(){
+    const host = document.getElementById("gameHost");
+    if(!state.session){ host.innerHTML=""; return; }
+    host.innerHTML = `
+      <div class="players-row" id="playersRow"></div>
+      <div class="quota-title">İhale Durumu</div>
+      <div class="quota-strip" id="quotaStrip"></div>
+      <button class="add-btn" id="openPanelBtn">+ Yeni El Ekle</button>
+      <div class="hand-progress" id="handProgress"></div>
+      <div id="panelHost"></div>
+      <div class="section-title"><span>El Geçmişi</span><div class="rule"></div></div>
+      <div id="historyHost"></div>
+      <div class="section-title"><span>İstatistikler</span><div class="rule"></div></div>
+      <div class="stat-cards" id="statCards"></div>
+      <div class="chart-wrap"><div class="legend" id="chartLegend"></div>
+        <svg id="chartSvg" viewBox="0 0 600 220" style="width:100%;height:auto;display:block;"></svg></div>
+      <footer>Veriler bu tarayıcıda saklanır (localStorage).
+        <button id="resetAllBtn" style="background:none;border:none;color:var(--crimson-light);cursor:pointer;text-decoration:underline;font-size:11px;">Tüm verileri sıfırla</button>
+      </footer>
+    `;
+    document.getElementById("openPanelBtn").addEventListener("click", ()=>{
+      if(panelState){ panelState=null; } else { openPanel(); }
+      renderPanel();
+    });
+    document.getElementById("resetAllBtn").addEventListener("click", ()=>{
+      if(confirm("Oyuncu listesi dahil TÜM veriler silinecek. Emin misin?")){
+        state = defaultState(); setupState=null; panelState=null;
+        saveState(); renderAll();
+      }
+    });
+    renderPlayers();
+    renderQuota();
+    renderPanel();
+    renderHistory();
+    renderStats();
+  }
+
+  function renderPlayers(){
+    const s = state.session;
+    const t = totals();
+    const maxT = Math.max(...t);
+    const row = document.getElementById("playersRow");
+    const nextChooser = s.hands.length < TOTAL_HANDS ? chooserForHandIndex(s.hands.length) : null;
+    row.innerHTML = s.players.map((name,i)=>{
+      const lastHand = s.hands[s.hands.length-1];
+      const delta = lastHand ? handScores(lastHand)[i] : null;
+      return `<div class="player-card ${t[i]===maxT && maxT!==0 ? 'leader':''}">
+        <div class="pname">${escapeHtml(name)}</div>
+        <div class="player-total ${t[i]<0?'neg':t[i]>0?'pos':''}">${t[i]}</div>
+        <div class="player-delta">${delta!==null ? (delta>0?'+':'')+delta+' (son el)' : ''}</div>
+      </div>`;
+    }).join("");
+    const progHost = document.getElementById("handProgress");
+    progHost.innerHTML = (s.hands.length >= TOTAL_HANDS
+      ? `Tüm eller tamamlandı (${s.hands.length}/${TOTAL_HANDS})`
+      : `El ${s.hands.length}/${TOTAL_HANDS} — sırada: <b style="color:var(--gold-light)">${escapeHtml(s.players[nextChooser])}</b>`);
+  }
+
+  function renderQuota(){
+    const {typePlayed} = quotas();
+    const strip = document.getElementById("quotaStrip");
+    strip.innerHTML = ALL_TYPES.map(t=>{
+      const max = t.id==="koz" ? 8 : 2;
+      const played = typePlayed[t.id]||0;
+      return `<div class="quota-pill ${played>=max?'done':''}"><span class="icon">${t.icon}</span> ${t.name} <b>${played}/${max}</b></div>`;
+    }).join("");
+  }
+
+  // ---- Add hand panel ----
+  let panelState = null; // {type, counts:[], rifkiWinner}
+  function openPanel(){ panelState = {type:null, counts:[0,0,0,0], rifkiWinner:null}; }
+  function closePanel(){ panelState=null; renderPanel(); }
+
+  function renderPanel(){
+    const host = document.getElementById("panelHost");
+    if(!host) return;
+    if(!panelState){ host.innerHTML = ""; return; }
+    const s = state.session;
+    const chooser = chooserForHandIndex(s.hands.length);
+    const {typePlayed, cezaByPlayer, kozByPlayer} = quotas();
+
+    let html = `<div class="panel"><h3>Yeni El</h3>
+      <div class="chooser-note">Bu eli oturma sırasına göre <b>${escapeHtml(s.players[chooser])}</b> seçiyor.</div>`;
+
+    html += `<div class="step-label">1. İhale türü</div><div class="choice-grid">`;
+    ALL_TYPES.forEach(t=>{
+      const max = t.id==="koz" ? 8 : 2;
+      const played = typePlayed[t.id]||0;
+      const personalUsed = t.id==="koz" ? kozByPlayer[chooser] : cezaByPlayer[chooser];
+      const personalMax = t.id==="koz" ? KOZ_QUOTA_PER_PLAYER : CEZA_QUOTA_PER_PLAYER;
+      const disabled = played>=max || personalUsed>=personalMax;
+      const sel = panelState.type===t.id;
+      html += `<button class="choice-btn ${sel?'selected':''}" data-step="type" data-val="${t.id}" ${disabled?'disabled':''}>
+        <span class="icon">${t.icon}</span> ${t.name} <small>${played}/${max}</small>
+      </button>`;
+    });
+    html += `</div>`;
+
+    if(panelState.type){
+      const info = typeInfo(panelState.type);
+      html += `<div class="step-label">2. Sonuç — ${info.name} (${info.units} ${info.unitLabel})</div>`;
+      if(panelState.type==="rifki"){
+        html += `<div class="rifki-grid">` + s.players.map((name,i)=>{
+          const sel = panelState.rifkiWinner===i;
+          return `<div class="rifki-btn ${sel?'selected':''}" data-step="rifki" data-val="${i}">${escapeHtml(name)}<br><small>kupa papazını aldı</small></div>`;
+        }).join("") + `</div>`;
+      } else {
+        html += `<div class="dist-grid">` + s.players.map((name,i)=>`
+          <div class="dist-cell"><label>${escapeHtml(name)}</label>
+            <input type="number" min="0" max="${info.units}" data-step="count" data-idx="${i}" value="${panelState.counts[i]||0}"/>
+          </div>`).join("") + `</div>`;
+        const sum = panelState.counts.reduce((a,b)=>a+(+b||0),0);
+        const ok = sum===info.units;
+        html += `<div class="dist-sum ${ok?'ok':'bad'}">Toplam: ${sum} / ${info.units} ${ok?'✓':''}</div>`;
+      }
+    }
+
+    const canSubmit = isSubmittable();
+    html += `<div class="panel-actions">
+      <button class="btn-secondary" id="cancelPanel">Vazgeç</button>
+      <button class="btn-primary" id="submitPanel" ${canSubmit?'':'disabled'}>Eli Kaydet</button>
+    </div></div>`;
+
+    host.innerHTML = html;
+
+    host.querySelectorAll('[data-step="type"]').forEach(b=>b.addEventListener("click",()=>{
+      panelState.type = b.dataset.val; panelState.counts=[0,0,0,0]; panelState.rifkiWinner=null; renderPanel();
+    }));
+    host.querySelectorAll('[data-step="rifki"]').forEach(b=>b.addEventListener("click",()=>{
+      panelState.rifkiWinner = +b.dataset.val; renderPanel();
+    }));
+    host.querySelectorAll('[data-step="count"]').forEach(inp=>{
+      inp.addEventListener("input",()=>{
+        panelState.counts[+inp.dataset.idx] = Math.max(0, +inp.value||0);
+        renderPanel();
+        const again = host.querySelector(`[data-step="count"][data-idx="${inp.dataset.idx}"]`);
+        if(again){ again.focus(); again.selectionStart = again.selectionEnd = again.value.length; }
+      });
+    });
+    const cancelBtn = document.getElementById("cancelPanel");
+    if(cancelBtn) cancelBtn.addEventListener("click", closePanel);
+    const submitBtn = document.getElementById("submitPanel");
+    if(submitBtn) submitBtn.addEventListener("click", submitHand);
+  }
+
+  function isSubmittable(){
+    if(!panelState || !panelState.type) return false;
+    const info = typeInfo(panelState.type);
+    if(panelState.type==="rifki") return panelState.rifkiWinner!==null;
+    const sum = panelState.counts.reduce((a,b)=>a+(+b||0),0);
+    return sum===info.units;
+  }
+
+  function submitHand(){
+    if(!isSubmittable()) return;
+    const s = state.session;
+    const chooser = chooserForHandIndex(s.hands.length);
+    const counts = panelState.type==="rifki"
+      ? [0,1,2,3].map(i=> i===panelState.rifkiWinner?1:0)
+      : panelState.counts.map(c=>+c||0);
+    s.hands.push({ id: Date.now(), type: panelState.type, chooser, counts });
+    saveState();
+    closePanel();
+    renderGame();
+  }
+
+  // ---- History ----
+  function renderHistory(){
+    const host = document.getElementById("historyHost");
+    const s = state.session;
+    if(s.hands.length===0){
+      host.innerHTML = `<div class="empty-note">Henüz el eklenmedi. Yukarıdan ilk eli ekleyerek başla.</div>`;
+      return;
+    }
+    let html = "";
+    s.hands.slice().reverse().forEach((h, ri)=>{
+      const idx = s.hands.length - 1 - ri;
+      const info = typeInfo(h.type);
+      const scores = handScores(h);
+      html += `<div class="hand-row ${h.type==='rifki'?'rifki-row':''}">
+        <div class="hand-row-top">
+          <div class="hand-meta">
+            <span class="hand-num">#${idx+1}</span>
+            <span class="hand-type"><span>${info.icon}</span>${info.name}</span>
+            <span class="hand-chooser">— ${escapeHtml(s.players[h.chooser])} seçti</span>
+          </div>
+          <div class="hand-actions"><button data-del="${idx}" title="Sil">✕</button></div>
+        </div>
+        <div class="hand-breakdown">
+          ${[0,1,2,3].map(p=>`
+            <div class="bd-cell">
+              <span class="name">${escapeHtml(s.players[p])}</span>
+              <span class="val">${h.counts[p]}</span>
+              <span class="score ${scores[p]<0?'neg':scores[p]>0?'pos':'zero'}">${scores[p]>0?'+':''}${scores[p]}</span>
+            </div>`).join("")}
+        </div>
+      </div>`;
+    });
+    host.innerHTML = html;
+    host.querySelectorAll('[data-del]').forEach(b=>{
+      b.addEventListener("click", ()=>{
+        const i = +b.dataset.del;
+        if(confirm(`El #${i+1} silinsin mi?`)){
+          s.hands.splice(i,1);
+          saveState(); renderGame();
+        }
+      });
+    });
+  }
+
+  // ---- Stats ----
+  function renderStats(){
+    const s = state.session;
+    const host = document.getElementById("statCards");
+    const t = totals();
+    host.innerHTML = s.players.map((name,p)=>{
+      const played = s.hands.filter(h=>h.chooser===p);
+      const rifkiTaken = s.hands.filter(h=>h.type==="rifki" && h.counts[p]===1).length;
+      const worst = s.hands.reduce((acc,h)=>{ const sc=handScores(h)[p]; return sc<acc.s?{s:sc,h}:acc; },{s:0,h:null});
+      const best = s.hands.reduce((acc,h)=>{ const sc=handScores(h)[p]; return sc>acc.s?{s:sc,h}:acc; },{s:0,h:null});
+      return `<div class="stat-card">
+        <h4>${escapeHtml(name)}</h4>
+        <div class="stat-line"><span>Toplam</span><span>${t[p]}</span></div>
+        <div class="stat-line"><span>Seçtiği el</span><span>${played.length}</span></div>
+        <div class="stat-line"><span>Rıfkı aldığı</span><span>${rifkiTaken}×</span></div>
+        <div class="stat-line"><span>En kötü el</span><span>${worst.h?worst.s:'—'}</span></div>
+        <div class="stat-line"><span>En iyi el</span><span>${best.h?('+'+best.s):'—'}</span></div>
+      </div>`;
+    }).join("");
+    renderChart();
+  }
+
+  function renderChart(){
+    const s = state.session;
+    const svg = document.getElementById("chartSvg");
+    const legend = document.getElementById("chartLegend");
+    const series = cumulativeSeries();
+    const W=600,H=220,padL=36,padR=10,padT=10,padB=20;
+    const allVals = series.flat();
+    let minV = Math.min(0,...allVals), maxV = Math.max(0,...allVals);
+    if(minV===maxV){ minV-=10; maxV+=10; }
+    const n = series[0].length;
+    const x = i => padL + (n<=1?0:(i/(n-1))*(W-padL-padR));
+    const y = v => padT + (1 - (v-minV)/(maxV-minV)) * (H-padT-padB);
+
+    let svgHtml = `<line x1="${padL}" y1="${y(0)}" x2="${W-padR}" y2="${y(0)}" stroke="rgba(247,243,233,0.2)" stroke-dasharray="3,3"/>`;
+    svgHtml += `<text x="4" y="${y(0)+4}" font-size="9" fill="#8FA396" font-family="JetBrains Mono">0</text>`;
+    svgHtml += `<text x="2" y="${y(maxV)+4}" font-size="9" fill="#8FA396" font-family="JetBrains Mono">${Math.round(maxV)}</text>`;
+    svgHtml += `<text x="2" y="${y(minV)+4}" font-size="9" fill="#8FA396" font-family="JetBrains Mono">${Math.round(minV)}</text>`;
+    series.forEach((ser,p)=>{
+      const pts = ser.map((v,i)=>`${x(i)},${y(v)}`).join(" ");
+      svgHtml += `<polyline points="${pts}" fill="none" stroke="${PLAYER_COLORS[p]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      const lastI = ser.length-1;
+      svgHtml += `<circle cx="${x(lastI)}" cy="${y(ser[lastI])}" r="3" fill="${PLAYER_COLORS[p]}"/>`;
+    });
+    svg.innerHTML = svgHtml;
+    legend.innerHTML = s.players.map((name,p)=>`<span><i style="background:${PLAYER_COLORS[p]}"></i>${escapeHtml(name)}</span>`).join("");
+  }
+
+  // ==================================================
+  function renderAll(){
+    renderRoster();
+    renderSetup();
+    renderSessionBar();
+    renderGame();
+  }
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
