@@ -114,7 +114,7 @@
   .player-total{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;margin-top:6px;color:var(--ivory);cursor:pointer;}
   .player-total.neg{color:var(--crimson-light);}
   .player-total.pos{color:var(--gold-light);}
-  .player-total-split{display:flex;flex-direction:column;gap:2px;margin-top:6px;cursor:pointer;}
+  .player-total-split{display:flex;flex-direction:row;gap:10px;justify-content:center;align-items:baseline;margin-top:10px;cursor:pointer;}
   .player-total-split .plus{color:var(--gold-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
   .player-total-split .minus{color:var(--crimson-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
   .next-chooser{text-align:center;font-size:13px;color:var(--gold-light);margin-top:4px;}
@@ -162,6 +162,9 @@
   .empty-note{color:var(--muted);font-size:13px;text-align:center;padding:24px 0;}
   .hand-row{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
   .hand-row.rifki-row{border-color:rgba(201,162,39,0.5);box-shadow:0 0 12px rgba(201,162,39,0.08) inset;}
+  .hand-row.cancelled-row{opacity:0.65;border-style:dashed;}
+  .cancel-tag{background:var(--crimson);color:var(--ivory);font-size:10px;padding:2px 7px;border-radius:10px;margin-left:2px;font-weight:600;}
+  .cancel-note{font-size:11px;color:var(--muted);margin-top:6px;text-align:center;}
   .hand-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .hand-meta{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
   .hand-num{font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:12px;}
@@ -482,10 +485,14 @@
   // GAME (scoreboard, add hand, history, stats)
   // ==================================================
   function handScores(hand){
+    if(hand.cancelled) return [0,0,0,0];
     const info = typeInfo(hand.type);
     const scores = [0,0,0,0];
     for(let p=0;p<4;p++){ scores[p] = (hand.counts[p]||0) * info.per; }
     return scores;
+  }
+  function validHandCount(){
+    return state.session.hands.filter(h=>!h.cancelled).length;
   }
   function totals(){
     const t=[0,0,0,0];
@@ -503,7 +510,7 @@
   function quotas(){
     const typePlayed={}; ALL_TYPES.forEach(t=>typePlayed[t.id]=0);
     const cezaByPlayer=[0,0,0,0], kozByPlayer=[0,0,0,0];
-    state.session.hands.forEach(h=>{
+    state.session.hands.filter(h=>!h.cancelled).forEach(h=>{
       typePlayed[h.type]++;
       if(h.type==="koz") kozByPlayer[h.chooser]++; else cezaByPlayer[h.chooser]++;
     });
@@ -552,7 +559,7 @@
     const {pos,neg} = plusMinusTotals();
     const maxT = Math.max(...t);
     const row = document.getElementById("playersRow");
-    const nextChooser = s.hands.length < TOTAL_HANDS ? chooserForHandIndex(s.hands.length) : null;
+    const nextChooser = validHandCount() < TOTAL_HANDS ? chooserForHandIndex(validHandCount()) : null;
     row.innerHTML = s.players.map((name,i)=>{
       const totalHtml = showBreakdown[i]
         ? `<div class="player-total-split" data-toggle="${i}">
@@ -573,9 +580,10 @@
       });
     });
     const progHost = document.getElementById("handProgress");
-    progHost.innerHTML = (s.hands.length >= TOTAL_HANDS
-      ? `Tüm eller tamamlandı (${s.hands.length}/${TOTAL_HANDS})`
-      : `El ${s.hands.length}/${TOTAL_HANDS} — sırada: <b style="color:var(--gold-light)">${escapeHtml(s.players[nextChooser])}</b>`);
+    const vhc = validHandCount();
+    progHost.innerHTML = (vhc >= TOTAL_HANDS
+      ? `Tüm eller tamamlandı (${vhc}/${TOTAL_HANDS})`
+      : `El ${vhc}/${TOTAL_HANDS} — sırada: <b style="color:var(--gold-light)">${escapeHtml(s.players[nextChooser])}</b>`);
   }
 
   function openScoreTable(){ scoreTableOpen = true; renderModal(); }
@@ -590,11 +598,15 @@
     s.hands.forEach((h,idx)=>{
       const info = typeInfo(h.type);
       const scores = handScores(h);
-      rowsHtml += `<tr><td>${idx+1}</td><td class="htype"><span class="hicon">${info.icon}</span> ${info.name}</td>`;
-      scores.forEach(sc=>{
-        const cls = sc<0?'neg':sc>0?'pos':'zero';
-        rowsHtml += `<td class="${cls}">${sc>0?'+':''}${sc}</td>`;
-      });
+      rowsHtml += `<tr${h.cancelled?' style="opacity:0.55;"':''}><td>${idx+1}</td><td class="htype"><span class="hicon">${info.icon}</span> ${info.name}${h.cancelled?' <span class="cancel-tag">İPTAL</span>':''}</td>`;
+      if(h.cancelled){
+        rowsHtml += `<td class="zero" colspan="4">—</td>`;
+      } else {
+        scores.forEach(sc=>{
+          const cls = sc<0?'neg':sc>0?'pos':'zero';
+          rowsHtml += `<td class="${cls}">${sc>0?'+':''}${sc}</td>`;
+        });
+      }
       rowsHtml += `</tr>`;
     });
     const totalRow = `<tr class="total-row"><td colspan="2">Toplam</td>${t.map(v=>`<td class="${v<0?'neg':v>0?'pos':''}">${v}</td>`).join("")}</tr>`;
@@ -635,7 +647,7 @@
     if(!host) return;
     if(!panelState){ host.innerHTML = ""; return; }
     const s = state.session;
-    const chooser = chooserForHandIndex(s.hands.length);
+    const chooser = chooserForHandIndex(validHandCount());
     const {typePlayed, cezaByPlayer, kozByPlayer} = quotas();
 
     let html = `<div class="panel"><h3>Yeni El</h3>
@@ -714,11 +726,12 @@
   function submitHand(){
     if(!isSubmittable()) return;
     const s = state.session;
-    const chooser = chooserForHandIndex(s.hands.length);
+    const chooser = chooserForHandIndex(validHandCount());
     const counts = panelState.type==="rifki"
       ? [0,1,2,3].map(i=> i===panelState.rifkiWinner?1:0)
       : panelState.counts.map(c=>+c||0);
-    s.hands.push({ id: Date.now(), type: panelState.type, chooser, counts });
+    const cancelled = panelState.type==="kiz" && counts.every(c=>c===1);
+    s.hands.push({ id: Date.now(), type: panelState.type, chooser, counts, cancelled });
     saveState();
     closePanel();
     renderGame();
@@ -737,12 +750,13 @@
       const idx = s.hands.length - 1 - ri;
       const info = typeInfo(h.type);
       const scores = handScores(h);
-      html += `<div class="hand-row ${h.type==='rifki'?'rifki-row':''}">
+      html += `<div class="hand-row ${h.type==='rifki'?'rifki-row':''} ${h.cancelled?'cancelled-row':''}">
         <div class="hand-row-top">
           <div class="hand-meta">
             <span class="hand-num">#${idx+1}</span>
             <span class="hand-type"><span>${info.icon}</span>${info.name}</span>
             <span class="hand-chooser">— ${escapeHtml(s.players[h.chooser])} seçti</span>
+            ${h.cancelled?'<span class="cancel-tag">İPTAL</span>':''}
           </div>
           <div class="hand-actions"><button data-del="${idx}" title="Sil">✕</button></div>
         </div>
@@ -751,9 +765,10 @@
             <div class="bd-cell">
               <span class="name">${escapeHtml(s.players[p])}</span>
               <span class="val">${h.counts[p]}</span>
-              <span class="score ${scores[p]<0?'neg':scores[p]>0?'pos':'zero'}">${scores[p]>0?'+':''}${scores[p]}</span>
+              <span class="score ${h.cancelled?'zero':(scores[p]<0?'neg':scores[p]>0?'pos':'zero')}">${h.cancelled?'—':(scores[p]>0?'+':'')+scores[p]}</span>
             </div>`).join("")}
         </div>
+        ${h.cancelled?`<div class="cancel-note">Herkes 1'er kız aldı — el iptal, ${escapeHtml(s.players[h.chooser])} yeniden kızsız seçecek.</div>`:''}
       </div>`;
     });
     host.innerHTML = html;
