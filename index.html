@@ -688,7 +688,7 @@
       } else {
         html += `<div class="dist-grid">` + s.players.map((name,i)=>`
           <div class="dist-cell"><label>${escapeHtml(name)}</label>
-            <input type="number" min="0" max="${info.units}" placeholder="0" data-step="count" data-idx="${i}" value="${panelState.counts[i] ? panelState.counts[i] : ''}"/>
+            <input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${info.units}" placeholder="0" data-step="count" data-idx="${i}" value="${panelState.counts[i] ? panelState.counts[i] : ''}"/>
           </div>`).join("") + `</div>`;
         const sum = panelState.counts.reduce((a,b)=>a+(+b||0),0);
         const ok = sum===info.units;
