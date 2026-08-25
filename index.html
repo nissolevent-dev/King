@@ -111,9 +111,12 @@
   .player-card{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:12px 8px;text-align:center;position:relative;}
   .player-card.leader{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;}
   .player-card .pname{font-size:13px;font-weight:600;color:var(--ivory);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .player-total{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;margin-top:6px;color:var(--ivory);}
+  .player-total{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;margin-top:6px;color:var(--ivory);cursor:pointer;}
   .player-total.neg{color:var(--crimson-light);}
   .player-total.pos{color:var(--gold-light);}
+  .player-total-split{display:flex;flex-direction:column;gap:2px;margin-top:6px;cursor:pointer;}
+  .player-total-split .plus{color:var(--gold-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
+  .player-total-split .minus{color:var(--crimson-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
   .player-delta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);min-height:14px;}
   .next-chooser{text-align:center;font-size:13px;color:var(--gold-light);margin-top:4px;}
   .next-chooser b{font-family:'Fraunces',serif;}
@@ -131,6 +134,9 @@
     background:linear-gradient(180deg,var(--gold-light),var(--gold));
     color:var(--ink);font-family:'Fraunces',serif;font-weight:700;font-size:16px;letter-spacing:.5px;cursor:pointer;}
   .add-btn:hover{filter:brightness(1.05);}
+  .table-btn{width:100%;margin-top:10px;padding:12px;border:1px solid var(--gold);border-radius:10px;
+    background:transparent;color:var(--gold-light);font-family:'Work Sans';font-weight:600;font-size:14px;cursor:pointer;}
+  .table-btn:hover{background:rgba(201,162,39,0.1);}
   .hand-progress{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;font-family:'JetBrains Mono',monospace;}
 
   .panel{background:var(--felt);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:16px;animation:fadein .18s ease-out;}
@@ -172,17 +178,6 @@
   .score.neg{color:var(--crimson-light);}
   .score.pos{color:var(--gold-light);}
   .score.zero{color:var(--muted);}
-
-  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-  .stat-card{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:12px;}
-  .stat-card h4{margin:0 0 8px;font-size:13px;font-family:'Fraunces',serif;color:var(--gold-light);font-weight:600;}
-  .stat-line{display:flex;justify-content:space-between;font-size:11px;color:var(--ivory-dim);margin-bottom:4px;}
-  .stat-line span:last-child{font-family:'JetBrains Mono',monospace;color:var(--muted);}
-
-  .chart-wrap{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:12px;}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--muted);}
-  .legend span{display:inline-flex;align-items:center;gap:5px;}
-  .legend i{width:10px;height:10px;border-radius:2px;display:inline-block;}
 
   footer{text-align:center;color:var(--muted);font-size:11px;margin-top:36px;padding:0 16px;}
 
@@ -464,10 +459,13 @@
     state.session.hands.forEach(h=>{ const s=handScores(h); for(let p=0;p<4;p++) t[p]+=s[p]; });
     return t;
   }
-  function cumulativeSeries(){
-    const series=[[0],[0],[0],[0]], run=[0,0,0,0];
-    state.session.hands.forEach(h=>{ const s=handScores(h); for(let p=0;p<4;p++){ run[p]+=s[p]; series[p].push(run[p]); } });
-    return series;
+  function plusMinusTotals(){
+    const pos=[0,0,0,0], neg=[0,0,0,0];
+    state.session.hands.forEach(h=>{
+      const sc = handScores(h);
+      for(let p=0;p<4;p++){ if(sc[p]>0) pos[p]+=sc[p]; else if(sc[p]<0) neg[p]+=sc[p]; }
+    });
+    return {pos,neg};
   }
   function quotas(){
     const typePlayed={}; ALL_TYPES.forEach(t=>typePlayed[t.id]=0);
@@ -487,14 +485,11 @@
       <div class="quota-title">İhale Durumu</div>
       <div class="quota-strip" id="quotaStrip"></div>
       <button class="add-btn" id="openPanelBtn">+ Yeni El Ekle</button>
+      <button class="table-btn" id="scoreTableBtn">📊 Puan Tablosu</button>
       <div class="hand-progress" id="handProgress"></div>
       <div id="panelHost"></div>
       <div class="section-title"><span>El Geçmişi</span><div class="rule"></div></div>
       <div id="historyHost"></div>
-      <div class="section-title"><span>İstatistikler</span><div class="rule"></div></div>
-      <div class="stat-cards" id="statCards"></div>
-      <div class="chart-wrap"><div class="legend" id="chartLegend"></div>
-        <svg id="chartSvg" viewBox="0 0 600 220" style="width:100%;height:auto;display:block;"></svg></div>
       <footer>Veriler bu tarayıcıda saklanır (localStorage).
         <button id="resetAllBtn" style="background:none;border:none;color:var(--crimson-light);cursor:pointer;text-decoration:underline;font-size:11px;">Tüm verileri sıfırla</button>
       </footer>
@@ -503,6 +498,7 @@
       if(panelState){ panelState=null; } else { openPanel(); }
       renderPanel();
     });
+    document.getElementById("scoreTableBtn").addEventListener("click", openScoreTable);
     document.getElementById("resetAllBtn").addEventListener("click", ()=>{
       if(confirm("Oyuncu listesi dahil TÜM veriler silinecek. Emin misin?")){
         state = defaultState(); setupState=null; panelState=null;
@@ -513,28 +509,78 @@
     renderQuota();
     renderPanel();
     renderHistory();
-    renderStats();
   }
 
+  let showBreakdown = [false,false,false,false];
   function renderPlayers(){
     const s = state.session;
     const t = totals();
+    const {pos,neg} = plusMinusTotals();
     const maxT = Math.max(...t);
     const row = document.getElementById("playersRow");
     const nextChooser = s.hands.length < TOTAL_HANDS ? chooserForHandIndex(s.hands.length) : null;
     row.innerHTML = s.players.map((name,i)=>{
       const lastHand = s.hands[s.hands.length-1];
       const delta = lastHand ? handScores(lastHand)[i] : null;
+      const totalHtml = showBreakdown[i]
+        ? `<div class="player-total-split" data-toggle="${i}">
+             <span class="plus">+${pos[i]}</span>
+             <span class="minus">${neg[i]}</span>
+           </div>`
+        : `<div class="player-total ${t[i]<0?'neg':t[i]>0?'pos':''}" data-toggle="${i}">${t[i]}</div>`;
       return `<div class="player-card ${t[i]===maxT && maxT!==0 ? 'leader':''}">
         <div class="pname">${escapeHtml(name)}</div>
-        <div class="player-total ${t[i]<0?'neg':t[i]>0?'pos':''}">${t[i]}</div>
+        ${totalHtml}
         <div class="player-delta">${delta!==null ? (delta>0?'+':'')+delta+' (son el)' : ''}</div>
       </div>`;
     }).join("");
+    row.querySelectorAll('[data-toggle]').forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const i = +el.dataset.toggle;
+        showBreakdown[i] = !showBreakdown[i];
+        renderPlayers();
+      });
+    });
     const progHost = document.getElementById("handProgress");
     progHost.innerHTML = (s.hands.length >= TOTAL_HANDS
       ? `Tüm eller tamamlandı (${s.hands.length}/${TOTAL_HANDS})`
       : `El ${s.hands.length}/${TOTAL_HANDS} — sırada: <b style="color:var(--gold-light)">${escapeHtml(s.players[nextChooser])}</b>`);
+  }
+
+  function openScoreTable(){
+    const s = state.session;
+    const t = totals();
+    const {pos,neg} = plusMinusTotals();
+    const win = window.open('', '_blank', 'width=480,height=480');
+    if(!win){ alert('Yeni pencere engellendi görünüyor, tarayıcı ayarlarından izin ver.'); return; }
+    const rows = s.players.map((name,i)=>`
+      <tr>
+        <td class="name">${escapeHtml(name)}</td>
+        <td class="plus">+${pos[i]}</td>
+        <td class="minus">${neg[i]}</td>
+        <td class="net">${t[i]}</td>
+      </tr>`).join("");
+    win.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+      <title>Puan Tablosu</title>
+      <style>
+        body{background:#0D2818;color:#F7F3E9;font-family:'Work Sans',sans-serif;margin:0;padding:20px;}
+        h1{font-family:Georgia,serif;font-size:20px;color:#E4C767;text-align:center;margin:0 0 16px;}
+        table{width:100%;border-collapse:collapse;}
+        th{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8FA396;text-align:right;padding:6px 8px;border-bottom:1px solid rgba(247,243,233,0.2);}
+        th:first-child, td.name{text-align:left;}
+        td{padding:10px 8px;font-family:'Courier New',monospace;font-size:15px;text-align:right;border-bottom:1px solid rgba(247,243,233,0.08);}
+        td.name{font-family:'Work Sans',sans-serif;font-weight:600;}
+        td.plus{color:#E4C767;}
+        td.minus{color:#D4645C;}
+        td.net{font-weight:700;color:#F7F3E9;}
+      </style></head><body>
+      <h1>♠ ♥ King — Puan Tablosu ♦ ♣</h1>
+      <table>
+        <tr><th>Oyuncu</th><th>Artı</th><th>Eksi</th><th>Toplam</th></tr>
+        ${rows}
+      </table>
+      </body></html>`);
+    win.document.close();
   }
 
   function renderQuota(){
@@ -689,55 +735,6 @@
         }
       });
     });
-  }
-
-  // ---- Stats ----
-  function renderStats(){
-    const s = state.session;
-    const host = document.getElementById("statCards");
-    const t = totals();
-    host.innerHTML = s.players.map((name,p)=>{
-      const played = s.hands.filter(h=>h.chooser===p);
-      const rifkiTaken = s.hands.filter(h=>h.type==="rifki" && h.counts[p]===1).length;
-      const worst = s.hands.reduce((acc,h)=>{ const sc=handScores(h)[p]; return sc<acc.s?{s:sc,h}:acc; },{s:0,h:null});
-      const best = s.hands.reduce((acc,h)=>{ const sc=handScores(h)[p]; return sc>acc.s?{s:sc,h}:acc; },{s:0,h:null});
-      return `<div class="stat-card">
-        <h4>${escapeHtml(name)}</h4>
-        <div class="stat-line"><span>Toplam</span><span>${t[p]}</span></div>
-        <div class="stat-line"><span>Seçtiği el</span><span>${played.length}</span></div>
-        <div class="stat-line"><span>Rıfkı aldığı</span><span>${rifkiTaken}×</span></div>
-        <div class="stat-line"><span>En kötü el</span><span>${worst.h?worst.s:'—'}</span></div>
-        <div class="stat-line"><span>En iyi el</span><span>${best.h?('+'+best.s):'—'}</span></div>
-      </div>`;
-    }).join("");
-    renderChart();
-  }
-
-  function renderChart(){
-    const s = state.session;
-    const svg = document.getElementById("chartSvg");
-    const legend = document.getElementById("chartLegend");
-    const series = cumulativeSeries();
-    const W=600,H=220,padL=36,padR=10,padT=10,padB=20;
-    const allVals = series.flat();
-    let minV = Math.min(0,...allVals), maxV = Math.max(0,...allVals);
-    if(minV===maxV){ minV-=10; maxV+=10; }
-    const n = series[0].length;
-    const x = i => padL + (n<=1?0:(i/(n-1))*(W-padL-padR));
-    const y = v => padT + (1 - (v-minV)/(maxV-minV)) * (H-padT-padB);
-
-    let svgHtml = `<line x1="${padL}" y1="${y(0)}" x2="${W-padR}" y2="${y(0)}" stroke="rgba(247,243,233,0.2)" stroke-dasharray="3,3"/>`;
-    svgHtml += `<text x="4" y="${y(0)+4}" font-size="9" fill="#8FA396" font-family="JetBrains Mono">0</text>`;
-    svgHtml += `<text x="2" y="${y(maxV)+4}" font-size="9" fill="#8FA396" font-family="JetBrains Mono">${Math.round(maxV)}</text>`;
-    svgHtml += `<text x="2" y="${y(minV)+4}" font-size="9" fill="#8FA396" font-family="JetBrains Mono">${Math.round(minV)}</text>`;
-    series.forEach((ser,p)=>{
-      const pts = ser.map((v,i)=>`${x(i)},${y(v)}`).join(" ");
-      svgHtml += `<polyline points="${pts}" fill="none" stroke="${PLAYER_COLORS[p]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-      const lastI = ser.length-1;
-      svgHtml += `<circle cx="${x(lastI)}" cy="${y(ser[lastI])}" r="3" fill="${PLAYER_COLORS[p]}"/>`;
-    });
-    svg.innerHTML = svgHtml;
-    legend.innerHTML = s.players.map((name,p)=>`<span><i style="background:${PLAYER_COLORS[p]}"></i>${escapeHtml(name)}</span>`).join("");
   }
 
   // ==================================================
