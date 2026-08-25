@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0D2818">
 <title>King Skor Takip</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,9 +24,11 @@
     --line: rgba(247,243,233,0.12);
   }
   *{box-sizing:border-box;}
+  html{background:var(--bg);}
   body{
     margin:0;
     background:radial-gradient(ellipse at top, var(--felt-light) 0%, var(--bg) 65%);
+    background-attachment:fixed;
     color:var(--ivory);
     font-family:'Work Sans', sans-serif;
     min-height:100vh;
