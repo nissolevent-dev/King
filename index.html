@@ -117,7 +117,6 @@
   .player-total-split{display:flex;flex-direction:column;gap:2px;margin-top:6px;cursor:pointer;}
   .player-total-split .plus{color:var(--gold-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
   .player-total-split .minus{color:var(--crimson-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
-  .player-delta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);min-height:14px;}
   .next-chooser{text-align:center;font-size:13px;color:var(--gold-light);margin-top:4px;}
   .next-chooser b{font-family:'Fraunces',serif;}
 
@@ -181,6 +180,39 @@
 
   footer{text-align:center;color:var(--muted);font-size:11px;margin-top:36px;padding:0 16px;}
 
+  /* ---- Score table modal ---- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;
+    display:flex;align-items:flex-end;justify-content:center;
+    animation:fadein .15s ease-out;
+  }
+  .modal-box{
+    background:var(--felt);border:1px solid var(--line);border-radius:14px 14px 0 0;
+    width:100%;max-width:920px;max-height:82vh;display:flex;flex-direction:column;
+  }
+  @media (min-width:640px){
+    .modal-overlay{align-items:center;}
+    .modal-box{border-radius:14px;max-height:80vh;}
+  }
+  .modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);}
+  .modal-header h3{margin:0;font-family:'Fraunces',serif;font-size:17px;color:var(--gold-light);font-weight:600;}
+  .modal-header button{background:none;border:1px solid var(--line);color:var(--ivory-dim);border-radius:6px;
+    width:30px;height:30px;cursor:pointer;font-size:14px;}
+  .modal-body{overflow:auto;padding:8px 12px 16px;}
+  .score-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .score-table th{position:sticky;top:0;background:var(--felt);text-align:center;padding:8px 6px;
+    font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap;}
+  .score-table th:first-child, .score-table td:first-child{text-align:left;padding-left:4px;}
+  .score-table td{text-align:center;padding:7px 6px;font-family:'JetBrains Mono',monospace;border-bottom:1px solid rgba(247,243,233,0.06);white-space:nowrap;}
+  .score-table td.htype{font-family:'Work Sans';text-align:left;color:var(--ivory-dim);}
+  .score-table td.hicon{font-size:13px;margin-right:3px;}
+  .score-table td.pos{color:var(--gold-light);}
+  .score-table td.neg{color:var(--crimson-light);}
+  .score-table td.zero{color:var(--muted);}
+  .score-table tr.total-row td{border-top:2px solid var(--gold);border-bottom:none;font-weight:700;padding-top:10px;color:var(--ivory);}
+  .score-table tr.total-row td.pos{color:var(--gold-light);}
+  .score-table tr.total-row td.neg{color:var(--crimson-light);}
+
   @media (max-width:560px){
     .players-row{grid-template-columns:repeat(2,1fr);}
     .stat-cards{grid-template-columns:repeat(2,1fr);}
@@ -210,6 +242,7 @@
   <div id="sessionBarHost"></div>
 
   <div id="gameHost"></div>
+  <div id="modalHost"></div>
 
 </div>
 
@@ -479,7 +512,7 @@
 
   function renderGame(){
     const host = document.getElementById("gameHost");
-    if(!state.session){ host.innerHTML=""; return; }
+    if(!state.session){ host.innerHTML=""; scoreTableOpen=false; renderModal(); return; }
     host.innerHTML = `
       <div class="players-row" id="playersRow"></div>
       <div class="quota-title">İhale Durumu</div>
@@ -509,6 +542,7 @@
     renderQuota();
     renderPanel();
     renderHistory();
+    renderModal();
   }
 
   let showBreakdown = [false,false,false,false];
@@ -520,8 +554,6 @@
     const row = document.getElementById("playersRow");
     const nextChooser = s.hands.length < TOTAL_HANDS ? chooserForHandIndex(s.hands.length) : null;
     row.innerHTML = s.players.map((name,i)=>{
-      const lastHand = s.hands[s.hands.length-1];
-      const delta = lastHand ? handScores(lastHand)[i] : null;
       const totalHtml = showBreakdown[i]
         ? `<div class="player-total-split" data-toggle="${i}">
              <span class="plus">+${pos[i]}</span>
@@ -531,7 +563,6 @@
       return `<div class="player-card ${t[i]===maxT && maxT!==0 ? 'leader':''}">
         <div class="pname">${escapeHtml(name)}</div>
         ${totalHtml}
-        <div class="player-delta">${delta!==null ? (delta>0?'+':'')+delta+' (son el)' : ''}</div>
       </div>`;
     }).join("");
     row.querySelectorAll('[data-toggle]').forEach(el=>{
@@ -547,40 +578,40 @@
       : `El ${s.hands.length}/${TOTAL_HANDS} — sırada: <b style="color:var(--gold-light)">${escapeHtml(s.players[nextChooser])}</b>`);
   }
 
-  function openScoreTable(){
+  function openScoreTable(){ scoreTableOpen = true; renderModal(); }
+  function closeScoreTable(){ scoreTableOpen = false; renderModal(); }
+  let scoreTableOpen = false;
+  function renderModal(){
+    const host = document.getElementById("modalHost");
+    if(!scoreTableOpen || !state.session){ host.innerHTML=""; return; }
     const s = state.session;
     const t = totals();
-    const {pos,neg} = plusMinusTotals();
-    const win = window.open('', '_blank', 'width=480,height=480');
-    if(!win){ alert('Yeni pencere engellendi görünüyor, tarayıcı ayarlarından izin ver.'); return; }
-    const rows = s.players.map((name,i)=>`
-      <tr>
-        <td class="name">${escapeHtml(name)}</td>
-        <td class="plus">+${pos[i]}</td>
-        <td class="minus">${neg[i]}</td>
-        <td class="net">${t[i]}</td>
-      </tr>`).join("");
-    win.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
-      <title>Puan Tablosu</title>
-      <style>
-        body{background:#0D2818;color:#F7F3E9;font-family:'Work Sans',sans-serif;margin:0;padding:20px;}
-        h1{font-family:Georgia,serif;font-size:20px;color:#E4C767;text-align:center;margin:0 0 16px;}
-        table{width:100%;border-collapse:collapse;}
-        th{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8FA396;text-align:right;padding:6px 8px;border-bottom:1px solid rgba(247,243,233,0.2);}
-        th:first-child, td.name{text-align:left;}
-        td{padding:10px 8px;font-family:'Courier New',monospace;font-size:15px;text-align:right;border-bottom:1px solid rgba(247,243,233,0.08);}
-        td.name{font-family:'Work Sans',sans-serif;font-weight:600;}
-        td.plus{color:#E4C767;}
-        td.minus{color:#D4645C;}
-        td.net{font-weight:700;color:#F7F3E9;}
-      </style></head><body>
-      <h1>♠ ♥ King — Puan Tablosu ♦ ♣</h1>
-      <table>
-        <tr><th>Oyuncu</th><th>Artı</th><th>Eksi</th><th>Toplam</th></tr>
-        ${rows}
-      </table>
-      </body></html>`);
-    win.document.close();
+    let rowsHtml = "";
+    s.hands.forEach((h,idx)=>{
+      const info = typeInfo(h.type);
+      const scores = handScores(h);
+      rowsHtml += `<tr><td>${idx+1}</td><td class="htype"><span class="hicon">${info.icon}</span> ${info.name}</td>`;
+      scores.forEach(sc=>{
+        const cls = sc<0?'neg':sc>0?'pos':'zero';
+        rowsHtml += `<td class="${cls}">${sc>0?'+':''}${sc}</td>`;
+      });
+      rowsHtml += `</tr>`;
+    });
+    const totalRow = `<tr class="total-row"><td colspan="2">Toplam</td>${t.map(v=>`<td class="${v<0?'neg':v>0?'pos':''}">${v}</td>`).join("")}</tr>`;
+    host.innerHTML = `<div class="modal-overlay" id="modalOverlay">
+      <div class="modal-box">
+        <div class="modal-header"><h3>Puan Tablosu</h3><button id="closeModalBtn">✕</button></div>
+        <div class="modal-body">
+          ${s.hands.length===0 ? '<div class="empty-note">Henüz el eklenmedi.</div>' : `
+          <table class="score-table">
+            <thead><tr><th>El</th><th>İhale</th>${s.players.map(n=>`<th>${escapeHtml(n)}</th>`).join("")}</tr></thead>
+            <tbody>${rowsHtml}${totalRow}</tbody>
+          </table>`}
+        </div>
+      </div>
+    </div>`;
+    document.getElementById("closeModalBtn").addEventListener("click", closeScoreTable);
+    document.getElementById("modalOverlay").addEventListener("click", e=>{ if(e.target.id==="modalOverlay") closeScoreTable(); });
   }
 
   function renderQuota(){
