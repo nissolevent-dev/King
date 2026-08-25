@@ -115,8 +115,10 @@
   .player-total.neg{color:var(--crimson-light);}
   .player-total.pos{color:var(--gold-light);}
   .player-total-split{display:flex;flex-direction:row;gap:10px;justify-content:center;align-items:baseline;margin-top:10px;cursor:pointer;}
-  .player-total-split .plus{color:var(--gold-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
-  .player-total-split .minus{color:var(--crimson-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
+  .player-total-split .plus{color:var(--gold-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:30px;}
+  .player-total-split .minus{color:var(--crimson-light);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:30px;}
+  .player-rights{font-size:11px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono',monospace;}
+  .player-rights b{color:var(--ivory-dim);}
   .next-chooser{text-align:center;font-size:13px;color:var(--gold-light);margin-top:4px;}
   .next-chooser b{font-family:'Fraunces',serif;}
 
@@ -258,12 +260,12 @@
   const PLAYER_COLORS = ["#E4C767","#D4645C","#7FB8A0","#8FA3D8"];
 
   const CEZA_TYPES = [
-    {id:"kupa",   name:"Kupasız",    icon:"♥", units:13, per:-30,  unitLabel:"kupa"},
-    {id:"kiz",    name:"Kızsız",     icon:"♛", units:4,  per:-100, unitLabel:"kız"},
-    {id:"erkek",  name:"Erkeksiz",   icon:"♚", units:8,  per:-60,  unitLabel:"erkek (K/V)"},
-    {id:"el",     name:"Elsiz",      icon:"✋", units:13, per:-50,  unitLabel:"el"},
-    {id:"sonIki", name:"Son İkisiz", icon:"⏳", units:2,  per:-180, unitLabel:"el"},
-    {id:"rifki",  name:"Rıfkısız",   icon:"👑", units:1,  per:-320, unitLabel:"kupa papazı"},
+    {id:"kupa",   name:"Kupa Almaz",    icon:"♥", units:13, per:-30,  unitLabel:"kupa"},
+    {id:"kiz",    name:"Kız Almaz",     icon:"♛", units:4,  per:-100, unitLabel:"kız"},
+    {id:"erkek",  name:"Erkek Almaz",   icon:"♚", units:8,  per:-60,  unitLabel:"erkek (K/V)"},
+    {id:"el",     name:"El Almaz",      icon:"✋", units:13, per:-50,  unitLabel:"el"},
+    {id:"sonIki", name:"Son İki Almaz", icon:"⏳", units:2,  per:-180, unitLabel:"el"},
+    {id:"rifki",  name:"Rıfkı Almaz",   icon:"👑", units:1,  per:-320, unitLabel:"kupa papazı"},
   ];
   const KOZ_TYPE = {id:"koz", name:"Koz", icon:"♠", units:13, per:50, unitLabel:"el"};
   const ALL_TYPES = [...CEZA_TYPES, KOZ_TYPE];
@@ -557,6 +559,7 @@
     const s = state.session;
     const t = totals();
     const {pos,neg} = plusMinusTotals();
+    const {cezaByPlayer, kozByPlayer} = quotas();
     const maxT = Math.max(...t);
     const row = document.getElementById("playersRow");
     const nextChooser = validHandCount() < TOTAL_HANDS ? chooserForHandIndex(validHandCount()) : null;
@@ -567,9 +570,12 @@
              <span class="minus">${neg[i]}</span>
            </div>`
         : `<div class="player-total ${t[i]<0?'neg':t[i]>0?'pos':''}" data-toggle="${i}">${t[i]}</div>`;
+      const cezaLeft = CEZA_QUOTA_PER_PLAYER - cezaByPlayer[i];
+      const kozLeft = KOZ_QUOTA_PER_PLAYER - kozByPlayer[i];
       return `<div class="player-card ${t[i]===maxT && maxT!==0 ? 'leader':''}">
         <div class="pname">${escapeHtml(name)}</div>
         ${totalHtml}
+        <div class="player-rights">Ceza <b>${cezaLeft}</b> · Koz <b>${kozLeft}</b></div>
       </div>`;
     }).join("");
     row.querySelectorAll('[data-toggle]').forEach(el=>{
